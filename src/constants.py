@@ -1,10 +1,19 @@
+import logging
 from telebot import types
 from helpers import create_markup, create_date_options
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+logger = logging.getLogger("constants")
+logger.info(f"TODAY: {datetime.now(ZoneInfo('UTC'))}")
 
 # Miscellaneous
 KEEP_BOOKINGS_DAYS = 30
 WELCOME_MESSAGE = "Welcome to Garuda Lounge Bot. How can I help you?"
 CANCEL_MESSAGE = "Enter 'cancel' to cancel booking'"
+delta = datetime.now(ZoneInfo('UTC')) - datetime.now(ZoneInfo('Asia/Singapore'))
+TZ_DIFF_HOURS = delta.total_seconds() / 3600
+logger.info(TZ_DIFF_HOURS)
 
 # MARKUPS
 get_availability_button = types.InlineKeyboardButton('Get Lounge Availability', callback_data='get_availability_select_date')

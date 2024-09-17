@@ -1,6 +1,6 @@
 import logging
 from callbacks.back import callback_back
-from constants import START_MARKUP, GET_MARKUP, WELCOME_MESSAGE
+from constants import START_MARKUP, GET_MARKUP, WELCOME_MESSAGE, TZ_DIFF_HOURS
 from db import get_bookings_by_date
 from datetime import datetime, timedelta
 
@@ -62,7 +62,7 @@ def get_availability_message(date):
 
                         # Find time booked
                         booking_time = row['booking_datetime']
-                        booking_time += timedelta(hours=8)
+                        booking_time += timedelta(hours=TZ_DIFF_HOURS)
                         booking_time = datetime.now() - booking_time
                         booking_time = booking_time.seconds
                         booking_time = "seconds" if booking_time < 60 else f"{round(booking_time / 60)} mins" if booking_time < 3600 else f"{round(booking_time / 3600)} hrs" if booking_time < 86400 else f"{round(booking_time / 86400)} days"
