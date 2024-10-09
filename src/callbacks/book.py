@@ -17,6 +17,8 @@ def callback_book(bot):
 
     @bot.callback_query_handler(func=lambda call: call.data == 'book_select_lounge')
     def select_lounge(call):
+        bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
+
         logger.info(f"{call.from_user.first_name} (@{call.from_user.username}) Booking Lounge (Select Lounge)")
         
         bot.send_message(
@@ -27,6 +29,8 @@ def callback_book(bot):
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith('book_level'))
     def select_date(call):
+        bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
+
         logger.info(f"{call.from_user.first_name} (@{call.from_user.username}) Booking Lounge (Select Date)")
 
         level = call.data.split('_')[-1]
@@ -41,6 +45,9 @@ def callback_book(bot):
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith('book_date_selected'))
     def handle_date_selection(call):
+
+        bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
+
         # Extract selected_date and level from call.data
         # Expected format: 'book_date_selected+<selected_date>+<level>'
         data_parts = call.data.split('+')
@@ -158,7 +165,8 @@ def callback_book(bot):
         if add_booking(level, booking_date, user.username, user.first_name, user.id, selected_date, start_time_obj, end_time_obj):
             bot.send_message(
                 message.chat.id, 
-                f"Booking confirmed for level {level} on {selected_date} from {start_time} to {end_time}."
+                f"Booking confirmed for level {level} on {selected_date} from {start_time} to {end_time}.",
+                reply_markup=START_MARKUP
             )
 
             # Update the group chat
