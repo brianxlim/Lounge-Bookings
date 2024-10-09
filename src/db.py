@@ -46,7 +46,7 @@ def execute_query(query: str, *args):
         return e
 
 def add_booking(
-        level: int, username: str, first_name: str, user_chat_id: str, 
+        level: int, booking_date: date, username: str, first_name: str, user_chat_id: str, 
         timeslot_date: str, timeslot_start_time: str, timeslot_end_time: str
     ):
     """
@@ -62,10 +62,10 @@ def add_booking(
     
     query = f"""
     INSERT INTO level_{level} (booking_datetime, username, first_name, user_chat_id, timeslot_date, timeslot_start_time, timeslot_end_time, status)
-    VALUES (NOW(), %s, %s, %s, %s, %s, %s, 'booked')
+    VALUES (%s, %s, %s, %s, %s, %s, %s, 'booked')
     """ 
     logger.info(f"Adding booking into level_{level}")
-    result = execute_query(query, username, first_name, user_chat_id, timeslot_date, timeslot_start_time, timeslot_end_time)
+    result = execute_query(query, booking_date, username, first_name, user_chat_id, timeslot_date, timeslot_start_time, timeslot_end_time)
 
     if isinstance(result, Exception):
         logger.error(f"Error adding booking: {result}")

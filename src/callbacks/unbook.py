@@ -4,8 +4,9 @@ from constants import START_MARKUP, WELCOME_MESSAGE
 from config import get_chat_ids
 from db import get_bookings_by_id, cancel_booking
 from helpers import create_buttons, create_markup
-from datetime import datetime
+from datetime import datetime, timedelta
 from callbacks.get_availability import get_availability_message
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger('callback (unbook)')
 CHAT_ID, TOPIC_THREAD_ID = get_chat_ids(testing=True)
@@ -21,7 +22,13 @@ def callback_unbook(bot):
         id = call.from_user.id
         bookings = get_bookings_by_id(id)
 
+        # Filter for valid bookings, i.e. not expired
+        today_sgt = datetime.now(ZoneInfo("Asia/Singapore")).date() # Get current time in Singapore (SGT)
+        bookings = bookings[bookings["timeslot_date"] >= today_sgt]
+
+
         if bookings.empty:
+            logger.info("No bookings found to unbook")
             bot.send_message(
                 call.message.chat.id,
                 "You have no bookings",
@@ -29,6 +36,7 @@ def callback_unbook(bot):
             )
             return
         
+        logger.info(f"Found {len(bookings)} bookings to unbook")
         names = []
         callback_data = []
         bookings['level'] = bookings['level'].astype(int)

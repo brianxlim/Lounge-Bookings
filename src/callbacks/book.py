@@ -1,11 +1,12 @@
 import logging
 from callbacks.back import callback_back
-from constants import START_MARKUP, BOOK_MARKUP_1, WELCOME_MESSAGE, CANCEL_MESSAGE, book_back_button
+from constants import START_MARKUP, BOOK_MARKUP_1, WELCOME_MESSAGE, CANCEL_MESSAGE, UTC_DIFF_HOURS, book_back_button
 from helpers import validate_time_format, create_date_options, create_markup
-from datetime import datetime
+from datetime import datetime, timedelta
 from db import get_bookings_by_date, add_booking
 from config import get_chat_ids
 from callbacks.get_availability import get_availability_message
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger('callback (book)')
 CHAT_ID, TOPIC_THREAD_ID = get_chat_ids(testing=True)
@@ -153,7 +154,8 @@ def callback_book(bot):
 
         # If no clashes, insert booking
         user = message.from_user
-        if add_booking(level, user.username, user.first_name, user.id, selected_date, start_time_obj, end_time_obj):
+        booking_date = datetime.now(ZoneInfo('UTC')) + timedelta(hours=UTC_DIFF_HOURS)
+        if add_booking(level, booking_date, user.username, user.first_name, user.id, selected_date, start_time_obj, end_time_obj):
             bot.send_message(
                 message.chat.id, 
                 f"Booking confirmed for level {level} on {selected_date} from {start_time} to {end_time}."
