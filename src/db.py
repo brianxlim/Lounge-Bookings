@@ -2,7 +2,7 @@ import psycopg2
 import logging
 from config import DATABASE_URL
 from datetime import datetime, timedelta, date
-from constants import KEEP_BOOKINGS_DAYS
+from constants import KEEP_BOOKINGS_DAYS, UTC_DIFF_HOURS
 import pandas as pd
 
 logger = logging.getLogger("db")
@@ -10,11 +10,15 @@ logger = logging.getLogger("db")
 def connect_db():
     try:
         logger.info("Connecting to PostgreSQL database...")
+
         connection = psycopg2.connect(DATABASE_URL, sslmode="require")
+        
         logger.info("Successfully connected to PostgreSQL database.")
+
         return connection
     except Exception as e:
         logger.error(f"Error while connecting to PostgreSQL database: {e}")
+        
         return None
 
 def execute_query(query: str, *args):
@@ -53,6 +57,7 @@ def add_booking(
     Add booking to level table
     """
     logger.info("Adding booking")
+
     try:
         # Convert the date from DD/MM/YYYY to YYYY-MM-DD format
         timeslot_date = datetime.strptime(timeslot_date, '%d/%m/%Y').strftime('%Y-%m-%d')
@@ -73,12 +78,55 @@ def add_booking(
     
     return True
 
+def get_all_bookings():
+    """
+    Fetch all bookings for that week
+    """
+    logger.info(f"Getting all bookings")
+
+    today = datetime.today() + timedelta(hours=UTC_DIFF_HOURS)
+    today_str = today.date().strftime('%Y-%m-%d')  # Convert to YYYY-MM-DD format
+
+    # Use parameterized query
+    query = f"""
+    SELECT '9' AS level, booking_id, booking_datetime, username, first_name, user_chat_id, timeslot_date, timeslot_start_time, timeslot_end_time, status
+    FROM level_9
+    WHERE 
+        timeslot_date >= %s
+
+    UNION ALL
+
+    SELECT '10' AS level, booking_id, booking_datetime, username, first_name, user_chat_id, timeslot_date, timeslot_start_time, timeslot_end_time, status
+    FROM level_10
+    WHERE 
+        timeslot_date >= %s
+
+    UNION ALL
+
+    SELECT '11' AS level, booking_id, booking_datetime, username, first_name, user_chat_id, timeslot_date, timeslot_start_time, timeslot_end_time, status
+    FROM level_11
+    WHERE 
+        timeslot_date >= %s;
+    """
+
+    result = execute_query(query, today_str, today_str, today_str)  # Pass today_str for all levels
+
+    if isinstance(result, Exception):
+        logger.error("Error retrieving all bookings")
+        return pd.DataFrame()
+
+    columns = ['level', 'booking_id', 'booking_datetime', 'username', 'first_name', 'user_chat_id', 'timeslot_date', 'timeslot_start_time', 'timeslot_end_time', 'status']
+    bookings_df = pd.DataFrame(result, columns=columns)
+
+    logger.info("Successfully retrieved all bookings")
+
+    return bookings_df
+
 def get_bookings_by_date(timeslot_date):
     """
     Fetch bookings from level_9, level_10, and level_11 where timeslot_date matches.
     Returns a Pandas DataFrame containing all matching bookings.
     """
-
     logger.info("Getting bookings by date")
 
     if not isinstance(timeslot_date, date):
@@ -120,7 +168,7 @@ def get_bookings_by_date(timeslot_date):
 
     # Return an empty DataFrame in case of error
     if isinstance(result, Exception):
-        logger.error("Error retrieving all bookings")
+        logger.error(f"Error retrieving bookings for {timeslot_date}")
         return pd.DataFrame()
     
     # Convert the result into a Pandas DataFrame
@@ -243,12 +291,12 @@ def update_booking(level: int, booking_id: str, new_start_time: str, new_end_tim
     SET 
         timeslot_start_time = %s, 
         timeslot_end_time = %s, 
-        booking_datetime = NOW()
+        booking_datetime = %s
     WHERE booking_id = %s
-    """ 
+    """
 
     logger.info(f"Updating start and end times for booking id {booking_id} in level_{level}")
-    result = execute_query(query, new_start_time, new_end_time, booking_id)
+    result = execute_query(query, new_start_time, new_end_time, datetime.today() + timedelta(hours=UTC_DIFF_HOURS), booking_id)
 
     if isinstance(result, Exception):
         logger.error(f"Error updating booking id: {booking_id}")

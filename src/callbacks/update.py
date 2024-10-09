@@ -1,6 +1,6 @@
 import logging
 from callbacks.back import callback_back
-from constants import START_MARKUP, WELCOME_MESSAGE, CANCEL_MESSAGE
+from constants import START_MARKUP, WELCOME_MESSAGE, CANCEL_MESSAGE, UTC_DIFF_HOURS
 from config import get_chat_ids
 from db import get_bookings_by_id, update_booking, get_bookings_by_date
 from datetime import datetime, timedelta
@@ -15,6 +15,8 @@ def callback_update(bot):
 
     @bot.callback_query_handler(func=lambda call: call.data == 'update_select')
     def update_select(call):
+
+        bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
 
         logger.info(f"{call.from_user.first_name} (@{call.from_user.username}) Updating (Select Booking)")
 
@@ -32,7 +34,11 @@ def callback_update(bot):
         names = []
         callback_data = []
         bookings['level'] = bookings['level'].astype(int)
-        bookings = bookings.sort_values(by=['level', 'timeslot_start_time'])
+
+        # Data manipulation
+        today = datetime.today() + timedelta(hours=UTC_DIFF_HOURS)
+        bookings = bookings[bookings["timeslot_date"] >= today.date()]
+        bookings = bookings.sort_values(by=['level', 'timeslot_date', 'timeslot_start_time'])
 
         for _, booking in bookings.iterrows():
 
@@ -54,6 +60,9 @@ def callback_update(bot):
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith('update_selected'))
     def update(call):
+
+        bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
+
         logger.info(f"{call.from_user.first_name} (@{call.from_user.username}) Updating")
 
         callback_info = call.data.split('_')
@@ -168,7 +177,8 @@ def callback_update(bot):
         if update_booking(level, booking_id, new_start_time, new_end_time):
             bot.send_message(
                 message.chat.id, 
-                f"Booking updated for level {level} on {timeslot_date.strftime("%Y-%m-%d")} to {new_start_time} - {new_end_time}."
+                f"Booking updated for level {level} on {timeslot_date.strftime("%Y-%m-%d")} to {new_start_time} - {new_end_time}.",
+                reply_markup=START_MARKUP
             )
 
             # Update the group chat

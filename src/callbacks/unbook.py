@@ -17,6 +17,9 @@ def callback_unbook(bot):
 
     @bot.callback_query_handler(func=lambda call: call.data == 'unbook_select')
     def unbook_select(call):
+        
+        bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
+
         logger.info(f"{call.from_user.first_name} (@{call.from_user.username}) Unbooking (Select Booking)")
 
         id = call.from_user.id
@@ -40,7 +43,7 @@ def callback_unbook(bot):
         names = []
         callback_data = []
         bookings['level'] = bookings['level'].astype(int)
-        bookings = bookings.sort_values(by=['level', 'timeslot_start_time'])
+        bookings = bookings.sort_values(by=['level', 'timeslot_date', 'timeslot_start_time'])
 
         for _, booking in bookings.iterrows():
 
@@ -62,6 +65,9 @@ def callback_unbook(bot):
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith('unbook_selected'))
     def unbook(call):
+
+        bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
+
         logger.info(f"{call.from_user.first_name} (@{call.from_user.username}) Unbooking")
         
         callback_info = call.data.split("_")
