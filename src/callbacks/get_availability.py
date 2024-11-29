@@ -1,8 +1,9 @@
 import logging
 from callbacks.back import callback_back
 from constants import START_MARKUP, GET_MARKUP, WELCOME_MESSAGE, UTC_DIFF_HOURS
-from db import get_bookings_by_date, get_all_bookings
+from db.db import get_bookings_by_date, get_all_bookings
 from datetime import datetime, timedelta
+import pandas as pd
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger('callback (get)')
@@ -27,19 +28,17 @@ def callback_get_availability(bot):
     def get_availability(call):
 
         bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
-        
-        logger.info(f"{call.from_user.first_name} (@{call.from_user.username}) Checking Availability")
-
         date = call.data.split("+")[1]
 
-        logger.info(f"Checking {date} availability")
+        logger.info(f"{call.from_user.first_name} (@{call.from_user.username}) Checking {date} availability")
 
         response = get_availability_message(date)
 
         bot.send_message(
             call.message.chat.id,
             response,
-            reply_markup=START_MARKUP
+            reply_markup=START_MARKUP,
+            parse_mode='Markdown'
         )
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith('get_availability_all_selected'))
@@ -49,8 +48,18 @@ def callback_get_availability(bot):
 
         logger.info("Checking all availability")
 
-        response = ""
         bookings = get_all_bookings()
+        if bookings.empty:
+            logger.info("No bookings found")
+            bot.send_message(
+                call.message.chat.id,
+                "No bookings found",
+                reply_markup=START_MARKUP
+            )
+            return
+             
+        response = ""
+        bookings = bookings[bookings['status'] == "booked"]
         bookings = bookings.sort_values(by=["timeslot_date", "level", "timeslot_start_time"])
 
         # Define the date range you want to check (e.g., the next 7 days)
@@ -64,10 +73,10 @@ def callback_get_availability(bot):
             
             if bookings_for_date.empty:
                 # No bookings for this date, so mark all lounges as unbooked
-                response += f"Lounge bookings for {date.strftime("%d/%m/%Y")}:\nAll lounges are unbooked!\n\n"
+                response += f"\U0001F4DA Lounge bookings for {date.strftime("%d/%m/%Y")}\U0001F4DA\nAll lounges are unbooked!\n\n"
             else:
                 # There are bookings, so group by level and list the bookings
-                response += f"Lounge bookings for {date.strftime("%d/%m/%Y")}:\n"
+                response += f"\U0001F4DA Lounge bookings for {date.strftime("%d/%m/%Y")}\U0001F4DA\n"
                 for level, level_group in bookings_for_date.groupby("level"):
                     prefix = "\U0001F467\U0001F467" if level == '9' else "\U0001F466\U0001F466" if level == "10" else "\U0001F466\U0001F467"
                     response += f"\n{prefix} Level {level} {prefix}\n"
@@ -82,33 +91,36 @@ def callback_get_availability(bot):
                         booking_time = booking_time.seconds
                         booking_time = "seconds" if booking_time < 60 else f"{round(booking_time / 60)} mins" if booking_time < 3600 else f"{round(booking_time / 3600)} hrs" if booking_time < 86400 else f"{round(booking_time / 86400)} days"
 
-                        response += f"• {start_time} - {end_time} by {row['first_name']} (@{row['username']}) {booking_time} ago\n"
+                        response += f"• *{start_time} - {end_time}* by {row['first_name']} (@{row['username']}) {booking_time} ago\n"
                 response += "\n"  # Add a newline between different timeslot_date blocks
 
         # Send the message with the response
         bot.send_message(
             call.message.chat.id,
             response,
-            reply_markup=START_MARKUP
+            reply_markup=START_MARKUP,
+            parse_mode='Markdown'
         )
         
 # Helper function for get_availability callback – abstracted to use in booking and unbooking
 def get_availability_message(date):
         bookings = get_bookings_by_date(date)
-
-        response = f"Lounge Bookings for {date}:\n"
         if bookings.empty:
-            response += "\nAll lounges are unbooked!\n"
-
+            return "No bookings found"
+        
+        bookings = bookings[bookings['status'] == "booked"]
+        response = f"\U0001F4DA Lounge bookings for {date}\U0001F4DA\n"
+        if bookings.empty:
+            response += "\nNo bookings for that day!\n"
         else:
             # Group bookings by level
-            for level in ['9', '10', '11']:
+            for level in range(9, 12):
                 level_bookings = bookings[bookings['level'] == level]
                 level_bookings = level_bookings.sort_values(by='timeslot_start_time')
                 
                 if not level_bookings.empty:
                     # Add the level header
-                    prefix = "\U0001F467\U0001F467" if level == '9' else "\U0001F466\U0001F466" if level == "10" else "\U0001F466\U0001F467"
+                    prefix = "\U0001F467\U0001F467" if level == 9 else "\U0001F466\U0001F466" if level == 10 else "\U0001F466\U0001F467"
                     response += f"\n{prefix} Level {level} {prefix}\n"
                     
                     # Add each booking in the level
@@ -126,6 +138,6 @@ def get_availability_message(date):
                         booking_time = "seconds" if booking_time < 60 else f"{round(booking_time / 60)} mins" if booking_time < 3600 else f"{round(booking_time / 3600)} hrs" if booking_time < 86400 else f"{round(booking_time / 86400)} days"
                         
                         # Add booking details with bullet pointb
-                        response += f"• {start_time} - {end_time} by {first_name} (@{username}), {booking_time} ago\n"
+                        response += f"• *{start_time} - {end_time}* by {first_name} (@{username}), {booking_time} ago\n"
         
         return response

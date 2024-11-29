@@ -31,8 +31,6 @@ def validate_time_format(time_str, end=False):
         return False
 
 def create_markup(name, *buttons):
-    logger.info(f'Creating markup for {name}')
-
     try:
         markup = types.InlineKeyboardMarkup()
 
