@@ -2,7 +2,7 @@ import logging
 from callbacks.back import callback_back
 from constants import START_MARKUP, WELCOME_MESSAGE
 from config import get_chat_ids
-from db import get_bookings_by_id, cancel_booking
+from db.db import get_bookings_by_id, cancel_booking
 from helpers import create_buttons, create_markup
 from datetime import datetime, timedelta
 from callbacks.get_availability import get_availability_message
@@ -28,7 +28,6 @@ def callback_unbook(bot):
         # Filter for valid bookings, i.e. not expired
         today_sgt = datetime.now(ZoneInfo("Asia/Singapore")).date() # Get current time in Singapore (SGT)
         bookings = bookings[bookings["timeslot_date"] >= today_sgt]
-
 
         if bookings.empty:
             logger.info("No bookings found to unbook")
